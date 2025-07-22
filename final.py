@@ -8,7 +8,9 @@ import random
 
 # ------------ Config ------------
 URL = "https://visaslots.info"
-TARGET_LOCATIONS = ["MUMBAI CONSULAR", "MUMBAI VAC"]
+TARGET_LOCATIONS = ["MUMBAI CONSULAR", "MUMBAI VAC",
+                    "NEW DELHI CONSULAR", "NEW DELHI VAC",
+                    "HYDERABAD CONSULAR", "HYDERABAD VAC"]
 # random.randint(300, 600)  # 5–10 min
 
 # Email Settings
@@ -70,7 +72,7 @@ Visit: {URL}
         print("❌ Email failed:", e)
 
 def check_f1_slots():
-    print("Checking Visa Slots...")
+    print("Checking Visa Slots...", flush=True)
     driver.get(URL)
     time.sleep(5)
 
@@ -91,19 +93,19 @@ def check_f1_slots():
         slots = cols[4].text.strip()
 
         if location in TARGET_LOCATIONS:
-            print(f"[{location}] Slots: {slots}")
+            print(f"[{location}] Slots: {slots}", flush=True)
             if slots.isdigit() and int(slots) > 0:
             # if True:
                 send_email(location, earliest, updated, slots)
             else:
-                print(f"No slots available for {location}.")
+                print(f"No slots available for {location}.", flush=True)
 
 # ------------ Run Loop ------------
 while True:
     try:
         check_f1_slots()
     except Exception as e:
-        print("❌ Error:", e)
+        print("❌ Error:", e, flush=True)
 
-    print(f"Waiting {CHECK_INTERVAL_SECONDS} sec...\n")
+    print(f"Waiting {CHECK_INTERVAL_SECONDS} sec...\n", flush=True)
     time.sleep(CHECK_INTERVAL_SECONDS)
