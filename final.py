@@ -20,7 +20,7 @@ load_dotenv()
 EMAIL_SENDER = os.getenv("EMAIL_SENDER")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 EMAIL_RECEIVER = os.getenv("EMAIL_RECEIVER")
-CHECK_INTERVAL_SECONDS = os.getenv("CHECK_INTERVAL_SECONDS", 300)  # Default to 5 minutes if not set
+CHECK_INTERVAL_SECONDS =int(os.getenv("CHECK_INTERVAL_SECONDS", 300)) # Default to 5 minutes if not set
 
 # ------------ Selenium Setup ------------
 # options = Options()
