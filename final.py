@@ -9,7 +9,6 @@ import random
 # ------------ Config ------------
 URL = "https://visaslots.info"
 TARGET_LOCATIONS = ["MUMBAI CONSULAR", "MUMBAI VAC"]
-CHECK_INTERVAL_SECONDS = 200
 # random.randint(300, 600)  # 5–10 min
 
 # Email Settings
@@ -21,17 +20,31 @@ load_dotenv()
 EMAIL_SENDER = os.getenv("EMAIL_SENDER")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 EMAIL_RECEIVER = os.getenv("EMAIL_RECEIVER")
-
+CHECK_INTERVAL_SECONDS = os.getenv("CHECK_INTERVAL_SECONDS", 300)  # Default to 5 minutes if not set
 
 # ------------ Selenium Setup ------------
-options = Options()
-options.headless = True
-options.add_argument("--no-sandbox")
-options.add_argument("--disable-gpu")
-options.add_argument("--disable-dev-shm-usage")
-options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/114.0.0.0 Safari/537.36")
+# options = Options()
+# options.headless = True
+# options.add_argument("--no-sandbox")
+# options.add_argument("--disable-gpu")
+# options.add_argument("--disable-dev-shm-usage")
+# options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/114.0.0.0 Safari/537.36")
 
-driver = webdriver.Chrome(options=options)
+# driver = webdriver.Chrome(options=options)
+
+from selenium.webdriver.chrome.service import Service
+
+options = webdriver.ChromeOptions()
+options.add_argument('--headless=new')  # Use --headless=new for recent Chrome
+options.add_argument('--no-sandbox')
+options.add_argument('--disable-dev-shm-usage')
+options.add_argument('--disable-gpu')
+options.add_argument('--window-size=1920x1080')
+options.add_argument('--remote-debugging-port=9222')
+
+# Explicitly point to chromedriver if needed
+driver = webdriver.Chrome(service=Service("/usr/local/bin/chromedriver"), options=options)
+
 
 def send_email(location, earliest, updated, slots):
     body = f"""🎯 Visa Slot Available!
