@@ -4,18 +4,26 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import time
-import random
+from selenium.webdriver.chrome.service import Service
 
 # ------------ Config ------------
 URL = "https://visaslots.info"
-TARGET_LOCATIONS = ["MUMBAI CONSULAR", "MUMBAI VAC",
-                    "NEW DELHI CONSULAR", "NEW DELHI VAC",
-                    "HYDERABAD CONSULAR", "HYDERABAD VAC"]
+TARGET_LOCATIONS_VAC = ["MUMBAI VAC",
+                    "NEW DELHI VAC",
+                    "HYDERABAD VAC",
+                    "CHENNAI VAC",
+                    "KOLKATA VAC",]
+TARGET_LOCATIONS_CON = ["MUMBAI CONSULAR",
+                    "NEW DELHI CONSULAR",
+                    "HYDERABAD CONSULAR",
+                    "CHENNAI CONSULAR",
+                    "KOLKATA CONSULAR"]
 # random.randint(300, 600)  # 5–10 min
 
 # Email Settings
 from dotenv import load_dotenv
 import os
+
 
 load_dotenv()
 
@@ -25,27 +33,56 @@ EMAIL_RECEIVER = os.getenv("EMAIL_RECEIVER")
 CHECK_INTERVAL_SECONDS =int(os.getenv("CHECK_INTERVAL_SECONDS", 300)) # Default to 5 minutes if not set
 
 # ------------ Selenium Setup ------------
-# options = Options()
-# options.headless = True
-# options.add_argument("--no-sandbox")
-# options.add_argument("--disable-gpu")
-# options.add_argument("--disable-dev-shm-usage")
-# options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/114.0.0.0 Safari/537.36")
+def create_driver_local():
+    from fake_useragent import UserAgent
+    ua = UserAgent()
+    user_agent = ua.random
+    print(f"[INFO] Using User-Agent: {user_agent}", flush=True)
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument('--headless=new')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument('--disable-gpu')
+    chrome_options.add_argument('--window-size=1920x1080')
+    chrome_options.add_argument(f'user-agent={user_agent}')
+    
+    return webdriver.Chrome(options=chrome_options)
 
-# # driver = webdriver.Chrome(options=options)
+def create_driver():
+    from fake_useragent import UserAgent
+    ua = UserAgent()
+    user_agent = ua.random
+    print(f"[INFO] Using User-Agent: {user_agent}", flush=True)
 
-from selenium.webdriver.chrome.service import Service
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument('--headless=new')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument('--disable-gpu')
+    chrome_options.add_argument('--window-size=1920x1080')
+    chrome_options.add_argument(f'user-agent={user_agent}')
+    
+    return webdriver.Chrome(service=Service("/usr/local/bin/chromedriver"), options=chrome_options)
 
-options = webdriver.ChromeOptions()
-options.add_argument('--headless=new')  # Use --headless=new for recent Chrome
-options.add_argument('--no-sandbox')
-options.add_argument('--disable-dev-shm-usage')
-options.add_argument('--disable-gpu')
-options.add_argument('--window-size=1920x1080')
-options.add_argument('--remote-debugging-port=9222')
+driver = create_driver()
+# driver = create_driver_local()
 
-# Explicitly point to chromedriver if needed
-driver = webdriver.Chrome(service=Service("/usr/local/bin/chromedriver"), options=options)
+
+# options = webdriver.ChromeOptions()
+# options.add_argument('--headless=new')  # Use --headless=new for recent Chrome
+# options.add_argument('--no-sandbox')
+# options.add_argument('--disable-dev-shm-usage')
+# options.add_argument('--disable-gpu')
+# options.add_argument('--window-size=1920x1080')
+# options.add_argument('--remote-debugging-port=9222')
+# from fake_useragent import UserAgent
+# ua = UserAgent()
+# options.add_argument(f"user-agent={ua.random}")
+# # print(f"[DEBUG] Using User-Agent: {ua.random}", flush=True)
+
+
+# # Explicitly point to chromedriver if needed
+# driver = webdriver.Chrome(service=Service("/usr/local/bin/chromedriver"), options=options)
 
 
 def send_email(location, earliest, updated, slots):
@@ -59,7 +96,7 @@ Slots Available: {slots}
 Visit: {URL}
 """
     msg = MIMEText(body)
-    msg["Subject"] = f"Visa Slot Alert – {location}"
+    msg["Subject"] = f"Visa Slot Alert - {location}"
     msg["From"] = EMAIL_SENDER
     msg["To"] = EMAIL_RECEIVER
 
@@ -75,11 +112,11 @@ import re
 
 def is_fresh(updated_str, max_age_minutes=10):
     updated_str = updated_str.lower().strip()
-    print(f"[DEBUG] Updated string: {updated_str}")
+    # print(f"[DEBUG] Updated string: {updated_str}")
 
     # Match formats like "00h 33m 15s ago"
     match = re.match(r"(?:(\d+)h)?\s*(?:(\d+)m)?\s*(?:(\d+)s)?", updated_str)
-    print(f"[DEBUG] Match result: {match}")
+    # print(f"[DEBUG] Match result: {match}")
     if not match:
         return False
 
@@ -96,10 +133,18 @@ def is_fresh(updated_str, max_age_minutes=10):
 def check_f1_slots():
     print("Checking Visa Slots...", flush=True)
     driver.get(URL)
-    time.sleep(5)
+    # time.sleep(5)
 
     soup = BeautifulSoup(driver.page_source, "html.parser")
     f1_section = soup.find("details", id="vsloc-f1-f2")
+    if not f1_section:
+        print("❌ F1 section not found — possible rate limit or layout change.", flush=True)
+        print("⏳ Sleeping extra 10 minutes to avoid ban...", flush=True)
+        driver.quit()
+        time.sleep(10)
+        globals()['driver'] = create_driver()  # replace global driver
+        time.sleep(600)
+        return
     table = f1_section.find("table", class_="sortable")
     rows = table.find("tbody").find_all("tr")
 
@@ -114,9 +159,9 @@ def check_f1_slots():
         earliest = cols[3].text.strip()
         slots = cols[4].text.strip()
 
-        if location in TARGET_LOCATIONS:
-            print(updated)
-            if not is_fresh(updated, max_age_minutes=30):
+        if location in TARGET_LOCATIONS_VAC:
+     
+            if not is_fresh(updated, max_age_minutes=15):
                 print(f"⚠️ Skipping stale data for {location} (updated {updated})",flush=True)
                 continue
     
@@ -126,13 +171,47 @@ def check_f1_slots():
                 send_email(location, earliest, updated, slots)
             else:
                 print(f"No slots available for {location}.", flush=True)
+                
+        if location in TARGET_LOCATIONS_CON:
+            if not is_fresh(updated, max_age_minutes=30):
+                print(f"⚠️ Skipping stale data for {location} (updated {updated})",flush=True)
+                continue
+    
+            print(f"[{location}] Slots: {slots}", flush=True)
+            if slots.isdigit() and int(slots) > 0:
+                send_email(location, earliest, updated, slots)
+            else:
+                print(f"No slots available for {location}.", flush=True)
 
 # ------------ Run Loop ------------
+# while True:
+#     try:
+#         check_f1_slots()
+#     except Exception as e:
+#         print("❌ Error:", e, flush=True)
+
+#     print(f"Waiting {CHECK_INTERVAL_SECONDS} sec...\n", flush=True)
+#     time.sleep(CHECK_INTERVAL_SECONDS)
+
+check_count = 0
+
 while True:
     try:
         check_f1_slots()
     except Exception as e:
         print("❌ Error:", e, flush=True)
+        print("🔁 Restarting browser due to error...", flush=True)
+        driver.quit()
+        driver = create_driver()
+        
+
+    check_count += 1
+    if check_count % 30 == 0:
+        print("🔁 Periodic restart after 30 checks", flush=True)
+        driver.quit()
+        driver = create_driver()
+        # driver = create_driver_local()
+        
 
     print(f"Waiting {CHECK_INTERVAL_SECONDS} sec...\n", flush=True)
     time.sleep(CHECK_INTERVAL_SECONDS)
