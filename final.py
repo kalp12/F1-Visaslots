@@ -32,7 +32,7 @@ CHECK_INTERVAL_SECONDS =int(os.getenv("CHECK_INTERVAL_SECONDS", 300)) # Default 
 # options.add_argument("--disable-dev-shm-usage")
 # options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/114.0.0.0 Safari/537.36")
 
-# driver = webdriver.Chrome(options=options)
+# # driver = webdriver.Chrome(options=options)
 
 from selenium.webdriver.chrome.service import Service
 
@@ -71,6 +71,28 @@ Visit: {URL}
     except Exception as e:
         print("❌ Email failed:", e)
 
+import re
+
+def is_fresh(updated_str, max_age_minutes=10):
+    updated_str = updated_str.lower().strip()
+    print(f"[DEBUG] Updated string: {updated_str}")
+
+    # Match formats like "00h 33m 15s ago"
+    match = re.match(r"(?:(\d+)h)?\s*(?:(\d+)m)?\s*(?:(\d+)s)?", updated_str)
+    print(f"[DEBUG] Match result: {match}")
+    if not match:
+        return False
+
+    hours = int(match.group(1) or 0)
+    minutes = int(match.group(2) or 0)
+    seconds = int(match.group(3) or 0)
+
+    total_minutes = hours * 60 + minutes + (seconds / 60)
+    print(f"[DEBUG] Parsed age: {total_minutes:.2f} minutes")
+
+    return total_minutes <= max_age_minutes
+
+
 def check_f1_slots():
     print("Checking Visa Slots...", flush=True)
     driver.get(URL)
@@ -93,6 +115,11 @@ def check_f1_slots():
         slots = cols[4].text.strip()
 
         if location in TARGET_LOCATIONS:
+            print(updated)
+            if not is_fresh(updated, max_age_minutes=30):
+                print(f"⚠️ Skipping stale data for {location} (updated {updated})",flush=True)
+                continue
+    
             print(f"[{location}] Slots: {slots}", flush=True)
             if slots.isdigit() and int(slots) > 0:
             # if True:
