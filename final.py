@@ -31,6 +31,8 @@ EMAIL_SENDER = os.getenv("EMAIL_SENDER")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 EMAIL_RECEIVER = os.getenv("EMAIL_RECEIVER")
 CHECK_INTERVAL_SECONDS =int(os.getenv("CHECK_INTERVAL_SECONDS", 300)) # Default to 5 minutes if not set
+VAC_MINUTES =int(os.getenv("VAC_MINUTES", 5))
+CON_MINUTES =int(os.getenv("CON_MINUTES", 5))
 
 # ------------ Selenium Setup ------------
 def create_driver_local():
@@ -161,7 +163,7 @@ def check_f1_slots():
 
         if location in TARGET_LOCATIONS_VAC:
      
-            if not is_fresh(updated, max_age_minutes=15):
+            if not is_fresh(updated, max_age_minutes=VAC_MINUTES):
                 print(f"⚠️ Skipping stale data for {location} (updated {updated})",flush=True)
                 continue
     
@@ -173,7 +175,7 @@ def check_f1_slots():
                 print(f"No slots available for {location}.", flush=True)
                 
         if location in TARGET_LOCATIONS_CON:
-            if not is_fresh(updated, max_age_minutes=30):
+            if not is_fresh(updated, max_age_minutes=CON_MINUTES):
                 print(f"⚠️ Skipping stale data for {location} (updated {updated})",flush=True)
                 continue
     
